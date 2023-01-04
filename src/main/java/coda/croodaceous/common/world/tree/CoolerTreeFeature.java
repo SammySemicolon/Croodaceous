@@ -67,6 +67,9 @@ public class CoolerTreeFeature extends Feature<NoneFeatureConfiguration> {
                                     return false;
                                 }
                                 filler.add(new Entry(pos, trunkLogState));
+                                if (!addDownwardsTrunk(iSeedReader, filler, pos)) {
+                                    return false;
+                                }
                             }
                         }
                     }
@@ -79,12 +82,18 @@ public class CoolerTreeFeature extends Feature<NoneFeatureConfiguration> {
                     return false;
                 }
                 filler.add(new Entry(sideEndPos, horizontalLogState));
+                if (!addDownwardsTrunk(iSeedReader, filler, sideEndPos)) {
+                    return false;
+                }
                 maxBiggerSides--;
             } else {
                 if (!canPlace(iSeedReader, sideStartPos)) {
                     return false;
                 }
                 filler.add(new Entry(sideStartPos, horizontalLogState));
+            }
+            if (!addDownwardsTrunk(iSeedReader, filler, sideStartPos)) {
+                return false;
             }
         }
         for (int i = 0; i < 9; i++) {
@@ -96,6 +105,9 @@ public class CoolerTreeFeature extends Feature<NoneFeatureConfiguration> {
                     return false;
                 }
                 filler.add(new Entry(trunkPos, trunkLogState));
+                if (!addDownwardsTrunk(iSeedReader, filler, trunkPos)) {
+                    return false;
+                }
             }
         }
         int upperTrunkHeight = 4 + random.nextInt(6);
@@ -144,8 +156,8 @@ public class CoolerTreeFeature extends Feature<NoneFeatureConfiguration> {
             return false;
         }
         filler.add(new Entry(splitOffSidePos, trunkLogState));
+        filler.add(new Entry(splitOffSidePos.above(), trunkLogState));
         makeLeafBlob(leavesFiller, random, upperTrunkTop.above());
-
 
         fill(iSeedReader, filler, false);
 
@@ -157,6 +169,28 @@ public class CoolerTreeFeature extends Feature<NoneFeatureConfiguration> {
         fill(iSeedReader, leavesFiller, true);
 
         return false;
+    }
+
+    public static boolean addDownwardsTrunk(WorldGenLevel level, List<Entry> filler, BlockPos pos) {
+        final BlockState log = WOOD.apply(Direction.Axis.Y);
+        int i = 0;
+        do {
+            i++;
+            BlockPos trunkPos = pos.below(i);
+            if (canPlace(level, trunkPos)) {
+                filler.add(new Entry(trunkPos, log));
+            } else {
+                break;
+            }
+            if (i > 3) {
+                return false;
+            }
+            if (i > level.getMaxBuildHeight()) {
+                break;
+            }
+        }
+        while (true);
+        return true;
     }
 
     public static void addBranches(List<Entry> filler, BlockPos pos) {
@@ -194,8 +228,7 @@ public class CoolerTreeFeature extends Feature<NoneFeatureConfiguration> {
     }
 
     public static boolean canPlace(WorldGenLevel reader, BlockPos pos) {
-        //todo implement some more proper 'is outside of world' check, mekanism has one
-        if (pos.getY() > reader.getMaxBuildHeight() || pos.getY() < 0) {
+        if (reader.isOutsideBuildHeight(pos)) {
             return false;
         }
         return reader.getBlockState(pos).getBlock().equals(CEBlocks.DESERT_BAOBAB_SAPLING.get()) || reader.isEmptyBlock(pos) || reader.getBlockState(pos).getMaterial().isReplaceable();
